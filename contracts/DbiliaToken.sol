@@ -2,11 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
+// A Simple Custom NFT
 contract DbiliaToken is ERC721 {
-    using SafeMath for uint256;
-
+    // dbilia address
     address public dbilia;
 
     struct Card {
@@ -14,10 +13,10 @@ contract DbiliaToken is ERC721 {
         uint256 edition;
         string tokenURI;
     }
-
+    // card used for payment
     mapping(uint256 => Card) cards; 
-
-    uint256 private currentTokenId = 0;
+    // Id of the current token
+    uint256 private currentTokenId;
 
     mapping(uint256 => string) public uris;
     mapping(uint256 => uint256) public editions;
@@ -39,37 +38,22 @@ contract DbiliaToken is ERC721 {
         _;
     }
 
+    // dbilia mints token on the user's behalf
     function mintWithUSD(address user, uint256 cardId, uint256 edition, string memory tokenURI) public onlyDbilia {
-        require(cards[cardId].user == address(0), "Dbilia: CardId exists");
-        require(user != address(0), "Dbilia: wrong address");
+        uint256 tokenId = _mintToken(user, cardId, edition, tokenURI);
 
-        uint256 newTokenId = _newTokenId();
-        _mint(user, newTokenId);
-        uris[newTokenId] = tokenURI;
-        editions[cardId] = edition;
-        
-        cards[cardId].user = user;
-        cards[cardId].edition = edition;
-        cards[cardId].tokenURI = tokenURI;
-        emit MintWithUSD(user, newTokenId);
+        emit MintWithUSD(user, tokenId);
     }
 
+    // user mints token
     function mintWithETH(uint256 cardId, uint256 edition, string memory tokenURI) public payable {
-        require(cards[cardId].user == address(0), "Dbilia: CardId exists");
         require(msg.value > 1e9, "Dbilia: insufficient amount"); // minimum eth amount for minting toekn is 1e9 wei
-        
-        uint256 newTokenId = _newTokenId();
-        _mint(msg.sender, newTokenId);
-        uris[newTokenId] = tokenURI;
-        editions[cardId] = edition;
-
-        cards[cardId].user = msg.sender;
-        cards[cardId].edition = edition;
-        cards[cardId].tokenURI = tokenURI;
-
-        emit MintWithETH(msg.sender, newTokenId);
+        uint256 tokenId = _mintToken(msg.sender, cardId, edition, tokenURI);
+    
+        emit MintWithETH(msg.sender, tokenId);
     }
-
+    
+    // set the dbilia address
     function setDbilia(address _dbilia) public onlyDbilia {
         dbilia = _dbilia;
     }
@@ -89,7 +73,23 @@ contract DbiliaToken is ERC721 {
         return uris[tokenId];
     }
 
+    // generate new token id
     function _newTokenId() internal returns (uint256) {
         return ++currentTokenId;
+    }
+
+    // mint new token
+    function _mintToken(address user, uint256 cardId, uint256 edition, string memory tokenURI) internal returns (uint256 tokenId) {
+        require(cards[cardId].user == address(0), "Dbilia: CardId exists");
+        require(user != address(0), "Dbilia: wrong address");
+
+        tokenId = _newTokenId();
+        _mint(user, tokenId);
+        uris[tokenId] = tokenURI;
+        editions[cardId] = edition;
+        
+        cards[cardId].user = user;
+        cards[cardId].edition = edition;
+        cards[cardId].tokenURI = tokenURI;
     }
 }
